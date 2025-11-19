@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
 import matplotlib.pyplot as plt
 import json
 from datetime import datetime
@@ -8,9 +8,31 @@ from data_loader import PlantDiseaseDataLoader
 from model import PlantDiseaseClassifier
 
 
+class ResumeCheckpoint(Callback):
+    
+    def __init__(self, checkpoint_path, resume_val_accuracy=None):
+        super().__init__()
+        self.checkpoint_path = checkpoint_path
+        self.best_val_accuracy = resume_val_accuracy or 0.0
+        self.verbose = 1
+    
+    def on_epoch_end(self, logs=None):
+        current_val_accuracy = logs.get('val_accuracy', 0)
+        
+        if current_val_accuracy > self.best_val_accuracy:
+            if self.verbose > 0:
+                print(f"\nval_accuracy improved from {self.best_val_accuracy:.5f} to {current_val_accuracy:.5f}, saving model")
+            
+            self.model.save(self.checkpoint_path)
+            self.best_val_accuracy = current_val_accuracy
+        else:
+            if self.verbose > 0:
+                print(f"\nval_accuracy did not improve from {self.best_val_accuracy:.5f}")
+
+
 class ModelTrainer:
     
-    def __init__(self, resume=False, resume_path=None, initial_epoch=0):
+    def __init__(self, resume=False, resume_path=None, initial_epoch=0, resume_val_accuracy=None):
         self.data_loader = PlantDiseaseDataLoader()
         self.classifier = PlantDiseaseClassifier()
         self.history = None
@@ -18,6 +40,7 @@ class ModelTrainer:
         self.resume = resume
         self.resume_path = resume_path
         self.initial_epoch = initial_epoch
+        self.resume_val_accuracy = resume_val_accuracy
     
     def prepare_data(self):
         train_generator = self.data_loader.load_training_data()
@@ -27,13 +50,19 @@ class ModelTrainer:
         return train_generator, validation_generator
     
     def setup_callbacks(self):
-        checkpoint = ModelCheckpoint(
-            str(config.CHECKPOINT_PATH),
-            monitor='val_accuracy',
-            save_best_only=True,
-            mode='max',
-            verbose=1
-        )
+        if self.resume and self.resume_val_accuracy is not None:
+            checkpoint = ResumeCheckpoint(
+                checkpoint_path=str(config.CHECKPOINT_PATH),
+                resume_val_accuracy=self.resume_val_accuracy
+            )
+        else:
+            checkpoint = ModelCheckpoint(
+                str(config.CHECKPOINT_PATH),
+                monitor='val_accuracy',
+                save_best_only=True,
+                mode='max',
+                verbose=1
+            )
         
         early_stopping = EarlyStopping(
             monitor='val_loss',
@@ -64,6 +93,8 @@ class ModelTrainer:
             print(f"\nRetomando treinamento do modelo: {self.resume_path}")
             self.classifier.load_for_training(self.resume_path)
             print(f"Continuando da época: {self.initial_epoch + 1}")
+            if self.resume_val_accuracy:
+                print(f"Melhor val_accuracy anterior: {self.resume_val_accuracy:.5f}")
         else:
             print("\nConstruindo modelo...")
             self.classifier.build_model(num_classes=len(self.class_names))
@@ -142,7 +173,8 @@ def main():
     trainer = ModelTrainer(
         resume=config.RESUME_TRAINING,
         resume_path=config.RESUME_MODEL_PATH,
-        initial_epoch=config.INITIAL_EPOCH
+        initial_epoch=config.INITIAL_EPOCH,
+        resume_val_accuracy=config.RESUME_VAL_ACCURACY
     )
     trainer.train()
     trainer.save_training_history()
