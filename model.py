@@ -71,3 +71,8 @@ class PlantDiseaseClassifier:
         load_path = filepath or config.CHECKPOINT_PATH
         self.model = tf.keras.models.load_model(load_path)
         return self.model
+    
+    def load_for_training(self, model_path):
+        self.model = tf.keras.models.load_model(model_path)
+        print(f"Modelo carregado de: {model_path}")
+        return self.model
