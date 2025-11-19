@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 ## Uso
 
-### Treinamento
+### Treinamento do Zero
 
 ```bash
 python train.py
@@ -52,6 +52,19 @@ O treinamento irá:
 - Treinar o modelo por até 50 épocas (com early stopping)
 - Salvar o melhor modelo em `models/plant_disease_classifier.keras`
 - Gerar gráficos de acurácia e loss em `results/`
+
+### Retomar Treinamento
+
+Para continuar treinando a partir de um modelo salvo, edite `config.py`:
+
+```python
+RESUME_TRAINING = True
+RESUME_MODEL_PATH = MODEL_DIR / "plant_disease_classifier.keras"
+INITIAL_EPOCH = 5  # Última época completada
+RESUME_VAL_ACCURACY = 0.7634  # Melhor val_accuracy do treino anterior
+```
+
+**Importante:** `RESUME_VAL_ACCURACY` garante que o modelo só será salvo se superar a acurácia anterior, evitando sobrescrever com modelos piores.
 
 ### Predição
 

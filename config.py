@@ -15,14 +15,19 @@ LEARNING_RATE = 0.001
 VALIDATION_SPLIT = 0.2
 RANDOM_SEED = 42
 
+# === CONFIGURAÇÃO DE RETOMADA DE TREINAMENTO ===
+
+# OPÇÃO 1: Treino do Zero (Padrão)
 RESUME_TRAINING = False
 RESUME_MODEL_PATH = None
 INITIAL_EPOCH = 0
+RESUME_VAL_ACCURACY = None
 
-#continue train
+# OPÇÃO 2: Continuar Treinamento (Descomente para usar)
 # RESUME_TRAINING = True
 # RESUME_MODEL_PATH = MODEL_DIR / "plant_disease_classifier.keras"
 # INITIAL_EPOCH = 5
+# RESUME_VAL_ACCURACY = 0.7634
 
 NUM_CLASSES = 38
 
