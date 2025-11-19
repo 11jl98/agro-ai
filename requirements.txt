@@ -1,7 +1,6 @@
 tensorflow>=2.15.0
 numpy>=1.24.0
 pillow>=10.0.0
-matplotlib>=3.7.0
-
+matplotlib>=3.7
 # SciPy é necessário por algumas utilidades do Keras (ex.: interpolation, image utils)
 scipy>=1.11.0

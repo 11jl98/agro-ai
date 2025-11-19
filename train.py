@@ -10,11 +10,14 @@ from model import PlantDiseaseClassifier
 
 class ModelTrainer:
     
-    def __init__(self):
+    def __init__(self, resume=False, resume_path=None, initial_epoch=0):
         self.data_loader = PlantDiseaseDataLoader()
         self.classifier = PlantDiseaseClassifier()
         self.history = None
         self.class_names = None
+        self.resume = resume
+        self.resume_path = resume_path
+        self.initial_epoch = initial_epoch
     
     def prepare_data(self):
         train_generator = self.data_loader.load_training_data()
@@ -57,9 +60,15 @@ class ModelTrainer:
         print(f"Imagens de treinamento: {train_generator.samples}")
         print(f"Imagens de validação: {validation_generator.samples}")
         
-        print("\nConstruindo modelo...")
-        self.classifier.build_model(num_classes=len(self.class_names))
-        self.classifier.compile_model()
+        if self.resume and self.resume_path:
+            print(f"\nRetomando treinamento do modelo: {self.resume_path}")
+            self.classifier.load_for_training(self.resume_path)
+            print(f"Continuando da época: {self.initial_epoch + 1}")
+        else:
+            print("\nConstruindo modelo...")
+            self.classifier.build_model(num_classes=len(self.class_names))
+            self.classifier.compile_model()
+
         self.classifier.get_summary()
         
         print("\nIniciando treinamento...")
@@ -69,10 +78,11 @@ class ModelTrainer:
             train_generator,
             validation_data=validation_generator,
             epochs=config.EPOCHS,
+            initial_epoch=self.initial_epoch,
             callbacks=callbacks,
             verbose=1
         )
-        
+         
         print("\nTreinamento concluído!")
         return self.history
     
@@ -129,7 +139,11 @@ class ModelTrainer:
 def main():
     tf.random.set_seed(config.RANDOM_SEED)
     
-    trainer = ModelTrainer()
+    trainer = ModelTrainer(
+        resume=config.RESUME_TRAINING,
+        resume_path=config.RESUME_MODEL_PATH,
+        initial_epoch=config.INITIAL_EPOCH
+    )
     trainer.train()
     trainer.save_training_history()
     trainer.save_class_mapping()
