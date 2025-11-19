@@ -1,10 +1,11 @@
-import tensorflow as tf
+import sys
 import numpy as np
-from PIL import Image
 import json
 from pathlib import Path
+from PIL import Image
 import config
 from model import PlantDiseaseClassifier
+from image_preprocessor import ImagePreprocessor
 
 
 class DiseasePredictor:
@@ -21,15 +22,22 @@ class DiseasePredictor:
         
         self.class_names = {int(k): v for k, v in self.class_names.items()}
     
-    def preprocess_image(self, image_path):
-        image = Image.open(image_path).convert('RGB')
-        image = image.resize(config.IMAGE_SIZE)
-        image_array = np.array(image) / 255.0
+    def preprocess_image(self, image_path, use_advanced_preprocessing=True):
+        if use_advanced_preprocessing:
+            image_array = ImagePreprocessor.preprocess_real_world_image(
+                image_path, 
+                apply_background_removal=True
+            )
+        else:
+            image = Image.open(image_path).convert('RGB')
+            image = image.resize(config.IMAGE_SIZE)
+            image_array = np.array(image) / 255.0
+        
         image_array = np.expand_dims(image_array, axis=0)
         return image_array
     
-    def predict(self, image_path, top_k=3):
-        preprocessed_image = self.preprocess_image(image_path)
+    def predict(self, image_path, top_k=3, use_advanced_preprocessing=True):
+        preprocessed_image = self.preprocess_image(image_path, use_advanced_preprocessing)
         predictions = self.classifier.model.predict(preprocessed_image, verbose=0)
         
         top_indices = np.argsort(predictions[0])[-top_k:][::-1]
@@ -46,10 +54,10 @@ class DiseasePredictor:
         
         return results
     
-    def predict_batch(self, image_paths, top_k=3):
+    def predict_batch(self, image_paths, top_k=3, use_advanced_preprocessing=True):
         batch_results = []
         for image_path in image_paths:
-            results = self.predict(image_path, top_k)
+            results = self.predict(image_path, top_k, use_advanced_preprocessing)
             batch_results.append({
                 'image': str(image_path),
                 'predictions': results
@@ -59,24 +67,28 @@ class DiseasePredictor:
     def print_prediction(self, results):
         print("\n" + "="*60)
         print("DIAGNÓSTICO DE DOENÇA DA PLANTA")
-        print("="*60)
+        print("="*60 + "\n")
         
         for i, result in enumerate(results, 1):
-            print(f"\n{i}. {result['disease']}")
-            print(f"   Confiança: {result['confidence']:.2f}%")
+            disease = result['disease'].replace('___', ' - ')
+            confidence = result['confidence']
+            
+            print(f"{i}. {disease}")
+            print(f"   Confiança: {confidence:.2f}%")
+            print()
         
-        print("\n" + "="*60)
+        print("="*60 + "\n")
 
 
 def main():
-    import sys
-    
     if len(sys.argv) < 2:
-        print("Uso: python predict.py <caminho_da_imagem>")
-        print("Exemplo: python predict.py data/test_image.jpg")
+        print("Uso: python predict.py <caminho_da_imagem> [--simple]")
+        print("\nOpções:")
+        print("  --simple: Desabilita pré-processamento avançado")
         return
     
     image_path = sys.argv[1]
+    use_advanced = '--simple' not in sys.argv
     
     if not Path(image_path).exists():
         print(f"Erro: Imagem não encontrada em {image_path}")
@@ -85,9 +97,10 @@ def main():
     print("Carregando modelo...")
     predictor = DiseasePredictor()
     
-    print(f"Analisando imagem: {image_path}")
-    results = predictor.predict(image_path, top_k=3)
+    preprocessing_mode = "avançado" if use_advanced else "simples"
+    print(f"Analisando imagem com pré-processamento {preprocessing_mode}: {image_path}")
     
+    results = predictor.predict(image_path, top_k=3, use_advanced_preprocessing=use_advanced)
     predictor.print_prediction(results)
 
 

@@ -64,7 +64,7 @@ class PlantDiseaseClassifier:
     
     def save_model(self, filepath=None):
         save_path = filepath or config.CHECKPOINT_PATH
-        self.model.save(save_path)
+        self.model.save(save_path, save_format='keras')
         return save_path
     
     def load_model(self, filepath=None):
@@ -73,6 +73,10 @@ class PlantDiseaseClassifier:
         return self.model
     
     def load_for_training(self, model_path):
-        self.model = tf.keras.models.load_model(model_path)
+        self.model = tf.keras.models.load_model(
+            model_path,
+            compile=True
+        )
         print(f"Modelo carregado de: {model_path}")
+        print(f"Learning rate atual: {self.model.optimizer.learning_rate.numpy():.6f}")
         return self.model
